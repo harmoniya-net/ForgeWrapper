@@ -51,10 +51,17 @@ public class JarModLauncher {
      * as it — appending to the running classpath cannot shadow what is already
      * there, and a launcher that honours {@code inheritsFrom} always puts the
      * inherited client jar on {@code -cp}. The Mojang format has no way to ask
-     * it not to, so the classpath is rebuilt here rather than negotiated: the
-     * patched jar first, everything else as it was, the vanilla jar dropped.
+     * it not to, so the classpath is rebuilt here rather than negotiated.
      *
-     * A {@link URLClassLoader} is also what LaunchWrapper expects — its
+     * <p>Order is what makes that correct, not the exclusion. The patched jar
+     * goes first and is a superset of the vanilla one — client entries, overlay
+     * entries on top, {@code META-INF} gone — so nothing the game asks for can
+     * resolve past it. Dropping the vanilla jar is only the case that can be
+     * recognised: a launcher is free to place a second copy of it under a name
+     * of its own, typically {@code versions/<id>/<id>.jar}, and that copy is
+     * indistinguishable from any other classpath entry.
+     *
+     * <p>A {@link URLClassLoader} is also what LaunchWrapper expects — its
      * {@code Launch} casts its own loader to one to read the sources for
      * {@code LaunchClassLoader}, which is a cast that fails outright against
      * the Java 9+ application loader.

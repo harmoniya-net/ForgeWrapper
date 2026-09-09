@@ -50,8 +50,12 @@ The patched jar has to be reached *instead of* the vanilla one, not as well as
 it — and a launcher that honours `inheritsFrom` always puts the inherited client
 jar on `-cp`, with no way for the Mojang format to ask it not to. So the wrapper
 does not negotiate: it builds a `URLClassLoader` holding the patched jar first,
-the rest of `-cp` after it, and the vanilla jar not at all, and hands off inside
-that.
+the rest of `-cp` after it, and hands off inside that.
+
+Order is what makes this correct. The patched jar is a superset of the vanilla
+one, so nothing can resolve past it — which also covers the copy a launcher may
+keep under a name of its own, such as `versions/<id>/<id>.jar`, that no check
+could recognise.
 
 That is also what LaunchWrapper expects. Its `Launch` casts its own loader to a
 `URLClassLoader` to read the sources for `LaunchClassLoader` — a cast that fails
