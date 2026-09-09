@@ -7,7 +7,7 @@ import java.util.List;
 import io.github.zekerzhayard.forgewrapper.installer.util.ModuleUtil;
 
 public class Bootstrap {
-    public static void bootstrap(String[] jvmArgs, String minecraftJar, String libraryDir) throws Throwable {
+    public static void bootstrap(String[] jvmArgs, String minecraftJar, String installerJar, String libraryDir) throws Throwable {
         // Replace all placeholders
         String[] replacedJvmArgs = new String[jvmArgs.length];
         for (int i = 0; i < jvmArgs.length; i++) {
@@ -55,7 +55,15 @@ public class Bootstrap {
 
                 if (prop[0].equals("ignoreList")) {
                     // The default ignoreList may cause some problems, so we define it more precisely.
-                    System.setProperty(prop[0], prop[1] + ",NewLaunch.jar,ForgeWrapper-," + minecraftJar);
+                    //
+                    // The installer has to be named here. The version document declares it a
+                    // library, so it lands on `-cp` in any launcher that reads the document —
+                    // and `neoforge-<version>-installer.jar` becomes an automatic module named
+                    // `neoforge`, which is the name FML gives its own jar in the game layer:
+                    // `Module neoforge reads another module named neoforge`. Forge never showed
+                    // this because its own ignoreList carries a bare `forge-` prefix that covers
+                    // the installer too; NeoForge dropped its equivalent after 20.4.
+                    System.setProperty(prop[0], prop[1] + ",NewLaunch.jar,ForgeWrapper-," + minecraftJar + "," + installerJar);
                 } else {
                     System.setProperty(prop[0], prop[1]);
                 }

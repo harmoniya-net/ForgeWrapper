@@ -61,7 +61,7 @@ public class Main {
 
             Map<String, Object> data = (Map<String, Object>) installer.getMethod("getData", File.class).invoke(null, detector.getLibraryDir().toFile());
             try {
-                Bootstrap.bootstrap((String[]) data.get("jvmArgs"), detector.getMinecraftJar(mcVersion).getFileName().toString(), detector.getLibraryDir().toAbsolutePath().toString());
+                Bootstrap.bootstrap((String[]) data.get("jvmArgs"), detector.getMinecraftJar(mcVersion).getFileName().toString(), installerJar.getFileName().toString(), detector.getLibraryDir().toAbsolutePath().toString());
             } catch (Throwable t) {
                 // Avoid this bunch of hacks that nuke the whole wrapper.
                 t.printStackTrace();

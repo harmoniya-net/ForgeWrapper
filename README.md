@@ -87,6 +87,19 @@ installer's own, and it extracts from the installer jar before reaching for the
 network, validates sha1, and returns early for a file already present, so a
 second launch does no work beyond hashing what is there.
 
+That class comes off the installer on the classpath rather than off what this
+was compiled against, and the two families disagree about it:
+
+```
+Forge      downloadLibrary(ProgressCallback, Mirror, Version$Library, File, List, List)
+NeoForge   downloadLibrary(ProgressCallback, Version$Library, File, Predicate<String>, List, List)
+```
+
+NeoForge dropped the mirror and takes the optional-library filter instead. The
+method is found by shape and called through whichever one the installer has —
+naming `Mirror` to tell them apart would itself fail on an installer that does
+not ship the class.
+
 Pre-1.13 still touches nothing: every input there is a file the launcher has
 already downloaded, named by a system property.
 
