@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -12,6 +13,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import net.minecraftforge.installer.DownloadUtils;
 import net.minecraftforge.installer.actions.PostProcessors;
@@ -82,7 +84,7 @@ public class Installer {
      * document: it names the installer, and the installer names the rest. No launcher
      * has to be told anything, and no non-standard field has to be invented to tell it.
      *
-     * <p>Nothing is re-implemented. {@link DownloadUtils#downloadLibrary} is the
+     * <p>Nothing is re-implemented. {@code DownloadUtils.downloadLibrary} is the
      * installer's own: it extracts from the installer jar before reaching for the
      * network, validates sha1, and returns early for a file that is already good — so
      * a second launch does no work beyond hashing what is there.
@@ -91,6 +93,7 @@ public class Installer {
         // `root` here is the library directory itself — `downloadLibrary` resolves
         // `<root>/<maven path>`, unlike `PostProcessors.process`, whose third
         // argument is the directory *above* it.
+        Method download = downloadLibraryMethod();
         List<Artifact> grabbed = new ArrayList<>();
         List<File> extraDirs = new ArrayList<>();
         for (Version.Library library : profile.getLibraries()) {
@@ -99,9 +102,57 @@ public class Installer {
             if (artifact == null || artifact.getUrl() == null || artifact.getUrl().isEmpty()) {
                 continue;
             }
-            if (!DownloadUtils.downloadLibrary(monitor, null, library, libraryDir, grabbed, extraDirs)) {
-                throw new IllegalStateException("Could not obtain " + library.getName() + ", which the Forge processors need");
+            if (!invokeDownloadLibrary(download, monitor, library, libraryDir, grabbed, extraDirs)) {
+                throw new IllegalStateException("Could not obtain " + library.getName() + ", which the installer's processors need");
             }
+        }
+    }
+
+    private static Method downloadLibrary;
+
+    /**
+     * The installer's downloader, whichever of the two shapes this installer has.
+     *
+     * <p>The class comes off the installer jar on the classpath, not off what this
+     * was compiled against, and Forge and NeoForge disagree about it:
+     *
+     * <pre>
+     * Forge      (ProgressCallback, Mirror,          Version$Library, File, List, List)
+     * NeoForge   (ProgressCallback, Version$Library, File, Predicate&lt;String&gt;, List, List)
+     * </pre>
+     *
+     * <p>NeoForge dropped the mirror and took the optional-library filter instead.
+     * The second parameter is what tells them apart, and naming {@code Mirror} to
+     * check would itself fail on an installer that does not ship the class — so the
+     * method is found by shape.
+     */
+    private static Method downloadLibraryMethod() {
+        if (downloadLibrary == null) {
+            for (Method method : DownloadUtils.class.getMethods()) {
+                if (method.getName().equals("downloadLibrary") && method.getParameterTypes().length == 6) {
+                    downloadLibrary = method;
+                    break;
+                }
+            }
+            if (downloadLibrary == null) {
+                throw new IllegalStateException("This installer has no DownloadUtils.downloadLibrary to call");
+            }
+        }
+        return downloadLibrary;
+    }
+
+    private static boolean invokeDownloadLibrary(Method download, ProgressCallback monitor, Version.Library library, File libraryDir, List<Artifact> grabbed, List<File> extraDirs) {
+        boolean neoForge = download.getParameterTypes()[1] == Version.Library.class;
+        // Every library the profile lists is one a processor needs, so nothing is
+        // optional here: the filter says yes to all of them, which is what passing
+        // no mirror amounted to on the other shape.
+        Object[] args = neoForge
+            ? new Object[] { monitor, library, libraryDir, (Predicate<String>) name -> true, grabbed, extraDirs }
+            : new Object[] { monitor, null, library, libraryDir, grabbed, extraDirs };
+        try {
+            return (Boolean) download.invoke(null, args);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new IllegalStateException("Could not obtain " + library.getName(), e);
         }
     }
 
