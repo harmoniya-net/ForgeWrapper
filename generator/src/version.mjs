@@ -181,7 +181,7 @@ export function withoutVanillaDuplicates(entries, vanillaLibraries) {
     });
 }
 
-function forgeVersionOf(forgeId, mc) {
+export function forgeVersionOf(forgeId, mc) {
     // `1.7.10-10.13.4.1614-1.7.10` — that era repeated the Minecraft version at
     // both ends.
     return forgeId.replace(new RegExp(`^${mc}-`), '').replace(new RegExp(`-${mc}$`), '');

@@ -5,6 +5,7 @@ import { detectEra, ERA } from './era.mjs';
 import { loadArtifactCache, saveArtifactCache } from './artifacts.mjs';
 import { fetchBuilds, fetchClassifiers, fetchDocuments, fetchPromotions, loadForgeCache, saveForgeCache } from './forge.mjs';
 import { knowsVersion, loadMojang, saveMojang, vanillaVersion } from './mojang.mjs';
+import { buildIndexEntry } from './index-entry.mjs';
 import { buildVersionJson } from './version.mjs';
 import { ensureDir, mapLimit, writeJson } from './utils.mjs';
 
@@ -65,28 +66,24 @@ for (const mc of minecraftVersions) {
     const list = written.filter(Boolean);
     if (list.length === 0) continue;
 
-    const pick = kind => {
-        const tag = promos[`${mc}-${kind}`];
-        return tag ? (list.find(b => b.forgeId.endsWith(tag) || b.forgeId.includes(`-${tag}`))?.forgeId ?? null) : null;
-    };
-    const latest = pick('latest') ?? list.at(-1).forgeId;
-    const recommended = pick('recommended');
-
-    index[mc] = {
-        latest,
-        recommended,
-        best: recommended ?? latest,
-        builds: list.map(b => ({ forge: b.forgeId, era: b.era })),
-    };
+    const entry = buildIndexEntry({
+        site: CONFIG.SITE,
+        mc,
+        forgeIds: list.map(b => b.forgeId),
+        promos,
+    });
+    index[mc] = entry;
 
     // GitHub Pages serves files, not redirects, so an alias has to be a file.
-    for (const [kind, forgeId] of Object.entries({ latest, recommended, best: recommended ?? latest })) {
+    for (const kind of ['latest', 'recommended', 'best']) {
+        const forgeId = entry[kind];
         if (!forgeId) continue;
         const from = path.join(CONFIG.PUBLIC_DIR, 'versions', mc, `${forgeId}.json`);
         fs.copyFileSync(from, path.join(CONFIG.PUBLIC_DIR, 'versions', mc, `${kind}.json`));
     }
 
-    console.error(`[${mc}] ${list.length}/${forgeIds.length} builds`);
+    const eras = list.reduce((counts, b) => ({ ...counts, [b.era]: (counts[b.era] ?? 0) + 1 }), {});
+    console.error(`[${mc}] ${list.length}/${forgeIds.length} builds ${JSON.stringify(eras)}`);
 }
 
 ensureDir(CONFIG.PUBLIC_DIR);

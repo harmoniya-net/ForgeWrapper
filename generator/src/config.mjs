@@ -18,6 +18,8 @@ export const WRAPPER = {
 };
 
 export const CONFIG = {
+    /** Where the documents are served from. URLs in the index are absolute against it. */
+    SITE: (process.env.SITE_BASE ?? 'https://harmoniya-net.github.io/ForgeWrapper').replace(/\/$/, ''),
     FORGE_API: 'https://files.minecraftforge.net/net/minecraftforge/forge',
     FORGE_MAVEN: 'https://maven.minecraftforge.net',
     MOJANG_MANIFEST: 'https://launchermeta.mojang.com/mc/game/version_manifest_v2.json',

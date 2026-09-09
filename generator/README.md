@@ -5,11 +5,16 @@ them to this repository's GitHub Pages site. The wrapper jar and the documents
 that name it are released together, which is why the generator lives beside it.
 
 ```
-public/index.json                      every Minecraft version, its builds and their eras
+public/index.json                      every Minecraft version, its builds, and a URL for each
 public/versions/<mc>/<forgeId>.json    the document
 public/versions/<mc>/{latest,recommended,best}.json
 public/skipped.json                    builds that produced nothing, with the reason
 ```
+
+The index carries no era. Nothing downstream is meant to branch on one — that
+is the point of publishing a single document shape for all four — and a field
+in the index is an invitation to. `SITE_BASE` sets the host the index's URLs
+are absolute against.
 
 There is no era in the output for a consumer to branch on. A launcher reads one
 document, resolves `inheritsFrom` against Mojang's own, downloads the libraries
