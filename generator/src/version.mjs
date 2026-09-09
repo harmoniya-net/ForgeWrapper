@@ -205,30 +205,6 @@ function wrapperJvmArgs(forgeId, mc, installerExtension) {
     ];
 }
 
-/**
- * What the processors themselves run on.
- *
- * Forge keeps these in a separate file for a reason: `installertools`,
- * `jarsplitter`, ASM 9.2 and 9.6, Guava 25.1 are the *installer's* classpath,
- * and several are older than what the game needs. Merged into `libraries` they
- * would land on the game's classpath and displace the runtime versions —
- * 1.20.1 ships Guava 32.1.2, and starting it against 25.1 is not a smaller
- * game, it is a broken one.
- *
- * `mavenFiles` is MultiMC's and Prism's name for exactly this: files that must
- * exist under the library directory without joining `-cp`. The Mojang format
- * cannot say that, which is why both launchers grew a field for it.
- *
- * An entry with no URL is produced by a processor rather than fetched, and one
- * already declared as a runtime library is not repeated.
- */
-export function installerFiles(runtime, installProfile) {
-    const declared = new Set(runtime.map(l => l.name));
-    return (installProfile?.libraries ?? []).filter(
-        l => l.downloads?.artifact?.url && !declared.has(l.name),
-    );
-}
-
 async function buildProcessor({ forgeId, mc, documents, classifiers }) {
     const source = documents.versionJson;
     if (!source) throw new Error(`Processor build ${forgeId} has no version.json`);
@@ -243,8 +219,6 @@ async function buildProcessor({ forgeId, mc, documents, classifiers }) {
     // An entry with no URL is not a download: the processors produce it.
     const produced = (source.libraries ?? []).filter(l => l.downloads?.artifact?.url);
 
-    const mavenFiles = installerFiles(produced, documents.installProfile);
-
     return {
         id: source.id ?? documentId(forgeId, mc),
         inheritsFrom: mc,
@@ -258,7 +232,6 @@ async function buildProcessor({ forgeId, mc, documents, classifiers }) {
             jvm: [...wrapperJvmArgs(forgeId, mc, classifiers.installer), ...stripModuleArgs(source.arguments?.jvm ?? [])],
         },
         libraries: [...produced, ...[client, installer, wrapper].filter(Boolean)],
-        ...(mavenFiles.length > 0 ? { mavenFiles } : {}),
     };
 }
 

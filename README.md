@@ -9,8 +9,8 @@ rewriting the client jar rather than running processors. Both eras end up as the
 same thing from a launcher's point of view — a `version.json` whose `mainClass`
 is this wrapper — so nothing outside has to know which era a build belongs to.
 
-Nothing here reaches the network. Every input is a file the launcher has already
-downloaded, named by a system property.
+A launcher needs to know nothing beyond the document: it fetches what the
+document lists, and this wrapper obtains whatever else the install needs.
 
 ## Pre-1.13 (Minecraft 1.5.2 and older)
 
@@ -63,8 +63,32 @@ outright against the Java 9+ application loader.
 
 ## 1.13+
 
-Unchanged from upstream: the wrapper runs Forge's own `PostProcessors` in-process,
-then delegates to the real main class.
+The wrapper runs Forge's own `PostProcessors` in-process, then delegates to the
+real main class.
+
+### The processors' own classpath
+
+`install_profile.json` lists what the *processors* run on — `installertools`,
+`jarsplitter`, ASM, Guava — and every one of those must be on disk before a
+processor can be built. That list is not the game's classpath and must not be
+merged into it: it is deliberately older (ASM 9.2 against a runtime 9.8, Guava
+25.1 against the 32.1.2 that 1.20.1 ships), so on `-cp` it would displace what
+the game needs.
+
+Upstream leaves the job to the launcher. MultiMC and Prism read the same list
+into a field of their own, `mavenFiles`, and fetch it ahead of the launch —
+which is why this wrapper works there and stops at `Missing Jar for processor`
+anywhere else.
+
+This fork obtains them itself, so that a Forge `version.json` stays a plain
+Mojang document that any launcher can read: it names the installer, and the
+installer names the rest. Nothing is re-implemented — `DownloadUtils` is the
+installer's own, and it extracts from the installer jar before reaching for the
+network, validates sha1, and returns early for a file already present, so a
+second launch does no work beyond hashing what is there.
+
+Pre-1.13 still touches nothing: every input there is a file the launcher has
+already downloaded, named by a system property.
 
 1. ForgeWrapper provides some java properties since 1.4.2:
    - `forgewrapper.librariesDir` : a path to libraries folder (e.g. -Dforgewrapper.librariesDir=/home/xxx/.minecraft/libraries)

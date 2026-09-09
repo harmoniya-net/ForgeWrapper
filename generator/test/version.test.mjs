@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ERA } from '../src/era.mjs';
-import { buildVersionJson, installerFiles, stripModuleArgs, withoutVanillaDuplicates } from '../src/version.mjs';
+import { buildVersionJson, stripModuleArgs, withoutVanillaDuplicates } from '../src/version.mjs';
 
 test('drops a module argument and the value that follows it', () => {
     assert.deepEqual(stripModuleArgs(['-p', 'a.jar:b.jar', '-Xmx2G']), ['-Xmx2G']);
@@ -99,28 +99,3 @@ test('keeps a logging object that actually names a client config', async () => {
     assert.deepEqual(document.logging, logging);
 });
 
-test('the installer classpath is kept apart from the runtime libraries', () => {
-    // Merging the two would put the installer's Guava 25.1 in front of the
-    // 32.1.2 the game needs.
-    const lib = (name, url = `https://maven/${name}.jar`) => ({ name, downloads: { artifact: { path: `${name}.jar`, url } } });
-    const runtime = [lib('org.ow2.asm:asm:9.8')];
-    const profile = {
-        libraries: [
-            lib('net.minecraftforge:installertools:1.4.1'),
-            lib('com.google.guava:guava:25.1-jre'),
-            lib('org.ow2.asm:asm:9.8'),
-            // Produced by a processor, so there is nothing to fetch.
-            lib('net.minecraftforge:forge:1.20.1-47.4.10:client', ''),
-        ],
-    };
-
-    assert.deepEqual(installerFiles(runtime, profile).map(l => l.name), [
-        'net.minecraftforge:installertools:1.4.1',
-        'com.google.guava:guava:25.1-jre',
-    ]);
-});
-
-test('a build with no install profile contributes no installer files', () => {
-    assert.deepEqual(installerFiles([], undefined), []);
-    assert.deepEqual(installerFiles([], { libraries: [] }), []);
-});

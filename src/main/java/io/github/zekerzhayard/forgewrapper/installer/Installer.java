@@ -53,6 +53,8 @@ public class Installer {
         monitor.message("java.net.preferIPv4Stack=" + System.getProperty("java.net.preferIPv4Stack"));
         monitor.message("Current Time: " + new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date()));
 
+        fetchProcessorLibraries(getWrapper(libraryDir), libraryDir, monitor);
+
         // MinecraftForge has removed all old installers since 2024/2/27, but they still exist in NeoForge.
         PostProcessors processors = new PostProcessors(wrapper, true, monitor);
         Method processMethod = PostProcessors.class.getMethod("process", File.class, File.class, File.class, File.class);
@@ -63,6 +65,41 @@ public class Installer {
             return (boolean) processMethod.invoke(processors, libraryDir, minecraftJar, libraryDir.getParentFile(), installerJar);
         } else {
             return processMethod.invoke(processors, libraryDir, minecraftJar, libraryDir.getParentFile(), installerJar) != null;
+        }
+    }
+
+    /**
+     * Put what the processors run on where they can find it.
+     *
+     * <p>The install profile lists the installer's own classpath — installertools,
+     * jarsplitter, ASM, Guava — and every one of those has to be on disk before a
+     * processor can be built. Upstream leaves that to the launcher: MultiMC and Prism
+     * read the same list into their {@code mavenFiles} field and fetch it ahead of the
+     * launch. Anywhere else nothing does, and the run stops at
+     * {@code Missing Jar for processor}.
+     *
+     * <p>Doing it here is what lets a Forge {@code version.json} stay a plain Mojang
+     * document: it names the installer, and the installer names the rest. No launcher
+     * has to be told anything, and no non-standard field has to be invented to tell it.
+     *
+     * <p>Nothing is re-implemented. {@link DownloadUtils#downloadLibrary} is the
+     * installer's own: it extracts from the installer jar before reaching for the
+     * network, validates sha1, and returns early for a file that is already good — so
+     * a second launch does no work beyond hashing what is there.
+     */
+    private static void fetchProcessorLibraries(InstallV1 profile, File libraryDir, ProgressCallback monitor) {
+        File root = libraryDir.getParentFile();
+        List<Artifact> grabbed = new ArrayList<>();
+        List<File> extraDirs = new ArrayList<>();
+        for (Version.Library library : profile.getLibraries()) {
+            Version.LibraryDownload artifact = library.getDownloads().getArtifact();
+            // An empty url means a processor produces this one; there is nothing to fetch.
+            if (artifact == null || artifact.getUrl() == null || artifact.getUrl().isEmpty()) {
+                continue;
+            }
+            if (!DownloadUtils.downloadLibrary(monitor, null, library, root, grabbed, extraDirs)) {
+                throw new IllegalStateException("Could not obtain " + library.getName() + ", which the Forge processors need");
+            }
         }
     }
 
