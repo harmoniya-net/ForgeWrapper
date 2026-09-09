@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ERA } from '../src/era.mjs';
-import { buildVersionJson, stripModuleArgs, withoutVanillaDuplicates } from '../src/version.mjs';
+import { stripModuleArgs } from '../src/document.mjs';
+import { buildVersionJson, withoutVanillaDuplicates } from '../src/version.mjs';
 
 test('drops a module argument and the value that follows it', () => {
     assert.deepEqual(stripModuleArgs(['-p', 'a.jar:b.jar', '-Xmx2G']), ['-Xmx2G']);

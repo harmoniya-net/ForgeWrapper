@@ -22,12 +22,18 @@ export const CONFIG = {
     SITE: (process.env.SITE_BASE ?? 'https://harmoniya-net.github.io/ForgeWrapper').replace(/\/$/, ''),
     FORGE_API: 'https://files.minecraftforge.net/net/minecraftforge/forge',
     FORGE_MAVEN: 'https://maven.minecraftforge.net',
+    /** NeoForge publishes no promotions endpoint; the version list is the whole API. */
+    NEOFORGE_VERSIONS: 'https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge',
+    NEOFORGE_MAVEN: 'https://maven.neoforged.net/releases',
     MOJANG_MANIFEST: 'https://launchermeta.mojang.com/mc/game/version_manifest_v2.json',
     DOCUMENT_CACHE: path.join(CACHE_DIR, 'documents'),
+    NEOFORGE_DOCUMENT_CACHE: path.join(CACHE_DIR, 'neoforge-documents'),
     META_CACHE: path.join(CACHE_DIR, 'forge-meta.json'),
     ARTIFACT_CACHE: path.join(CACHE_DIR, 'artifacts.json'),
     MOJANG_CACHE: path.join(CACHE_DIR, 'mojang.json'),
     PUBLIC_DIR: path.join(process.cwd(), 'public'),
+    /** NeoForge's documents get their own index under the same site. */
+    NEOFORGE_DIR: path.join(process.cwd(), 'public', 'neoforge'),
     CONCURRENCY: Number(process.env.CONCURRENCY ?? 12),
 };
 

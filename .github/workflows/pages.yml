@@ -5,8 +5,8 @@ on:
   # trigger another workflow. `release.yml` dispatches this one instead, which
   # is the documented exception to that rule.
   schedule:
-    # Forge publishes a handful of builds a day; a cold cache is the expensive
-    # run, every one after it is a few hundred requests.
+    # Forge and NeoForge publish a handful of builds a day between them; a cold
+    # cache is the expensive run, every one after it is a few hundred requests.
     - cron: "17 5 * * *"
   workflow_dispatch:
 
@@ -45,6 +45,7 @@ jobs:
         run: |
           npm test
           node src/index.mjs
+          node src/neoforge-index.mjs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: generator/public

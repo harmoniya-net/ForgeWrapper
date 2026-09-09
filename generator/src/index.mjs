@@ -5,7 +5,7 @@ import { detectEra, ERA } from './era.mjs';
 import { loadArtifactCache, saveArtifactCache } from './artifacts.mjs';
 import { fetchBuilds, fetchClassifiers, fetchDocuments, fetchPromotions, loadForgeCache, saveForgeCache } from './forge.mjs';
 import { knowsVersion, loadMojang, saveMojang, vanillaVersion } from './mojang.mjs';
-import { buildIndexEntry } from './index-entry.mjs';
+import { buildIndexEntry, forgePromotions } from './index-entry.mjs';
 import { buildVersionJson } from './version.mjs';
 import { ensureDir, mapLimit, writeJson } from './utils.mjs';
 
@@ -66,16 +66,15 @@ for (const mc of minecraftVersions) {
     const list = written.filter(Boolean);
     if (list.length === 0) continue;
 
-    const entry = buildIndexEntry({
-        site: CONFIG.SITE,
-        mc,
-        forgeIds: list.map(b => b.forgeId),
-        promos,
-    });
+    const ids = list.map(b => b.forgeId);
+    const entry = buildIndexEntry({ site: CONFIG.SITE, mc, ids, ...forgePromotions({ mc, forgeIds: ids, promos }) });
     index[mc] = entry;
 
     // GitHub Pages serves files, not redirects, so an alias has to be a file.
+    // Not on an `--only` run: one build is not evidence about which is newest,
+    // and writing the aliases from it would promote whatever was asked for.
     for (const kind of ['latest', 'recommended', 'best']) {
+        if (options.only) break;
         const forgeId = entry[kind];
         if (!forgeId) continue;
         const from = path.join(CONFIG.PUBLIC_DIR, 'versions', mc, `${forgeId}.json`);
