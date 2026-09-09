@@ -52,4 +52,10 @@ jobs:
         # The documents name this release by URL and sha1, so they are stale the
         # moment it is published. A dispatch is the one cross-workflow trigger
         # GITHUB_TOKEN is allowed to fire.
-        run: gh workflow run pages.yml --ref "$GITHUB_REF_NAME"
+        #
+        # On the default branch, not on the tag: the github-pages environment
+        # only accepts deployments from a protected branch, so a tag-ref run
+        # generates the documents and is then refused at the deploy step. The
+        # generator reads the release it should name from the API anyway
+        # (`gh release view`), so the ref it runs on carries no information.
+        run: gh workflow run pages.yml --ref "${{ github.event.repository.default_branch }}"
