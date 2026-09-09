@@ -40,6 +40,14 @@ export function stripModuleArgs(jvm) {
     return kept;
 }
 
+/**
+ * Forge's own documents carry `"logging": {}` — the key with nothing under it.
+ * An empty object is not a smaller `logging`, it is a different shape, and a
+ * consumer that reads the field as optional-but-whole chokes on it. Under
+ * `inheritsFrom` the vanilla document supplies the real one anyway.
+ */
+const loggingOf = logging => (logging?.client ? { logging } : {});
+
 function library(name, artifact) {
     return { name, downloads: { artifact } };
 }
@@ -217,7 +225,7 @@ async function buildProcessor({ forgeId, mc, documents, classifiers }) {
         type: source.type ?? 'release',
         time: source.time,
         releaseTime: source.releaseTime,
-        logging: source.logging,
+        ...loggingOf(source.logging),
         mainClass: WRAPPER.mainClass,
         arguments: {
             game: source.arguments?.game ?? [],
@@ -253,7 +261,7 @@ async function buildLegacy({ forgeId, mc, documents, vanillaLibraries }) {
         type: source.type ?? 'release',
         time: source.time,
         releaseTime: source.releaseTime,
-        logging: source.logging,
+        ...loggingOf(source.logging),
         mainClass: source.mainClass,
         libraries: libraries.filter(Boolean),
     };
