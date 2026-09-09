@@ -44,13 +44,18 @@ is newer than it.
 Arguments reach the real main class untouched — the wrapper is a shim, not a
 launcher.
 
-### One requirement on the launcher
+### Nothing is required of the launcher
 
-**The vanilla client jar must not be on `-cp`.** The patched jar is appended to
-the classpath at runtime, and appending cannot shadow: if the vanilla jar is
-already there, its unpatched — and, for the overlay case, unmodded — classes win
-every lookup and the game starts looking like it worked. The wrapper checks for
-this and refuses rather than let it happen.
+The patched jar has to be reached *instead of* the vanilla one, not as well as
+it — and a launcher that honours `inheritsFrom` always puts the inherited client
+jar on `-cp`, with no way for the Mojang format to ask it not to. So the wrapper
+does not negotiate: it builds a `URLClassLoader` holding the patched jar first,
+the rest of `-cp` after it, and the vanilla jar not at all, and hands off inside
+that.
+
+That is also what LaunchWrapper expects. Its `Launch` casts its own loader to a
+`URLClassLoader` to read the sources for `LaunchClassLoader` — a cast that fails
+outright against the Java 9+ application loader.
 
 ## 1.13+
 

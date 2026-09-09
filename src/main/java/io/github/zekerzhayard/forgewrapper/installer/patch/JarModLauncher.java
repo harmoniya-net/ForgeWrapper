@@ -1,13 +1,13 @@
 package io.github.zekerzhayard.forgewrapper.installer.patch;
 
 import java.io.File;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import io.github.zekerzhayard.forgewrapper.installer.util.ModuleUtil;
 
 /**
  * The pre-1.13 half of the wrapper.
@@ -37,37 +37,51 @@ public class JarModLauncher {
         Path output = requirePath("forgewrapper.patched");
         List<Path> overlays = parsePaths(System.getProperty("forgewrapper.jarmod"));
 
-        checkAbsentFromClassPath(client);
-
         ClientPatcher.patch(client, overlays, output);
 
-        Path directory = output.getParent();
-        ModuleUtil.setupClassPath(directory, Collections.singletonList(output.getFileName().toString()));
-
-        Class.forName(mainClass, false, ClassLoader.getSystemClassLoader())
+        ClassLoader loader = newClassLoader(client, output);
+        Thread.currentThread().setContextClassLoader(loader);
+        Class.forName(mainClass, false, loader)
             .getMethod("main", String[].class)
             .invoke(null, new Object[] { args });
     }
 
     /**
-     * The patched jar is appended to the classpath, and appending cannot shadow.
-     * If the launcher also left the vanilla jar on {@code -cp}, its unpatched —
-     * and, for the merge case, unmodded — classes would win every lookup, and
-     * the game would start looking like it worked. Refuse instead.
+     * The patched jar has to be reached instead of the vanilla one, not as well
+     * as it — appending to the running classpath cannot shadow what is already
+     * there, and a launcher that honours {@code inheritsFrom} always puts the
+     * inherited client jar on {@code -cp}. The Mojang format has no way to ask
+     * it not to, so the classpath is rebuilt here rather than negotiated: the
+     * patched jar first, everything else as it was, the vanilla jar dropped.
+     *
+     * A {@link URLClassLoader} is also what LaunchWrapper expects — its
+     * {@code Launch} casts its own loader to one to read the sources for
+     * {@code LaunchClassLoader}, which is a cast that fails outright against
+     * the Java 9+ application loader.
      */
-    private static void checkAbsentFromClassPath(Path client) {
-        Path target = client.toAbsolutePath().normalize();
+    static ClassLoader newClassLoader(Path client, Path patched) throws Exception {
+        Path vanilla = client.toAbsolutePath().normalize();
+        List<URL> urls = new ArrayList<>();
+        urls.add(patched.toUri().toURL());
         for (String entry : System.getProperty("java.class.path", "").split(File.pathSeparator)) {
             if (entry.isEmpty()) {
                 continue;
             }
-            if (Paths.get(entry).toAbsolutePath().normalize().equals(target)) {
-                throw new IllegalStateException(
-                    "The vanilla client jar is on the classpath: " + entry + "\n" +
-                    "Pre-1.13 Forge runs against a patched copy of it, which is appended at runtime and " +
-                    "so cannot shadow an entry that is already there. Drop the vanilla jar from -cp."
-                );
+            Path path = Paths.get(entry).toAbsolutePath().normalize();
+            if (!path.equals(vanilla)) {
+                urls.add(path.toUri().toURL());
             }
+        }
+        // Platform loader on 9+, null (bootstrap) on 8 — either way the
+        // application loader, and with it the vanilla jar, stays out of reach.
+        return URLClassLoader.newInstance(urls.toArray(new URL[0]), platformClassLoader());
+    }
+
+    private static ClassLoader platformClassLoader() {
+        try {
+            return (ClassLoader) ClassLoader.class.getMethod("getPlatformClassLoader").invoke(null);
+        } catch (ReflectiveOperationException e) {
+            return null;
         }
     }
 
@@ -80,10 +94,10 @@ public class JarModLauncher {
     }
 
     private static List<Path> parsePaths(String value) {
-        List<Path> paths = new ArrayList<>();
         if (value == null) {
-            return paths;
+            return Collections.emptyList();
         }
+        List<Path> paths = new ArrayList<>();
         for (String entry : value.split(File.pathSeparator)) {
             if (!entry.isEmpty()) {
                 paths.add(Paths.get(entry).toAbsolutePath());
