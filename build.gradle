@@ -72,10 +72,13 @@ jar {
 // The jar is pinned by URL + sha1 from a release asset, so the version has to
 // be the tag that produced it — a date suffix would name a build no tag points
 // at. Off a tag, the date suffix still keeps CI builds distinguishable.
+//
+// A leading `v` is dropped: this version becomes a maven coordinate and a
+// filename, where `v0.1.0` reads as a typo rather than a version.
 String resolveVersion() {
     if (System.getenv("GITHUB_REF_TYPE") == "tag") {
         String tag = System.getenv("GITHUB_REF_NAME")
-        if (tag != null && !tag.isEmpty()) return tag
+        if (tag != null && !tag.isEmpty()) return tag.replaceFirst(/^v(?=\d)/, "")
     }
 
     if (System.getenv("GITHUB_ACTIONS") == "true")

@@ -8,7 +8,7 @@ const CACHE_DIR = path.join(process.cwd(), '.cache');
  * together, which is the whole reason the generator lives here.
  */
 export const WRAPPER = {
-    tag: process.env.FORGEWRAPPER_TAG ?? 'harmoniya-1',
+    tag: process.env.FORGEWRAPPER_TAG ?? '0.1.0',
     group: 'io.github.zekerzhayard',
     artifact: 'ForgeWrapper',
     mainClass: 'io.github.zekerzhayard.forgewrapper.installer.Main',
