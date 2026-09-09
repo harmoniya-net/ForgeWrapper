@@ -1,8 +1,9 @@
 name: Version documents
 
 on:
-  release:
-    types: [published]
+  # Not `release: published` — a release created with GITHUB_TOKEN does not
+  # trigger another workflow. `release.yml` dispatches this one instead, which
+  # is the documented exception to that rule.
   schedule:
     # Forge publishes a handful of builds a day; a cold cache is the expensive
     # run, every one after it is a few hundred requests.

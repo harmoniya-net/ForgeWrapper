@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  # to dispatch the document workflow once the release exists
+  actions: write
 
 jobs:
   release:
@@ -44,3 +46,10 @@ jobs:
             --notes-file notes.md \
             --generate-notes \
             build/libs/*
+      - name: Regenerate the version documents
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # The documents name this release by URL and sha1, so they are stale the
+        # moment it is published. A dispatch is the one cross-workflow trigger
+        # GITHUB_TOKEN is allowed to fire.
+        run: gh workflow run pages.yml --ref "$GITHUB_REF_NAME"
