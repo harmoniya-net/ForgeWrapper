@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "8.0.312"
+          architecture: x64
+      - name: Build with Gradle
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build -iS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Package
+          path: build/libs
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A launcher pins this jar by URL + sha1, so the checksums are part of
+          # what the release publishes — not a nicety.
+          {
+            echo '```'
+            sha1sum build/libs/*.jar | sed 's|build/libs/||'
+            echo '```'
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --generate-notes \
+            build/libs/*
