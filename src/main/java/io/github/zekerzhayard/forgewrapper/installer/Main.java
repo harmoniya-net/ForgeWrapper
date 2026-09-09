@@ -12,11 +12,20 @@ import java.util.stream.Stream;
 
 import io.github.zekerzhayard.forgewrapper.installer.detector.DetectorLoader;
 import io.github.zekerzhayard.forgewrapper.installer.detector.IFileDetector;
+import io.github.zekerzhayard.forgewrapper.installer.patch.JarModLauncher;
 import io.github.zekerzhayard.forgewrapper.installer.util.ModuleUtil;
 
 public class Main {
     @SuppressWarnings("unchecked")
     public static void main(String[] args) throws Throwable {
+        // Before 1.13 there is no install profile to run and no --fml.* to read:
+        // the whole job is rewriting the client jar. The launcher says so by
+        // naming the class to hand off to.
+        if (System.getProperty("forgewrapper.mainClass") != null) {
+            JarModLauncher.launch(args);
+            return;
+        }
+
         // --fml.neoForgeVersion 20.2.20-beta --fml.fmlVersion 1.0.2 --fml.mcVersion 1.20.2 --fml.neoFormVersion 20231019.002635 --launchTarget forgeclient
 
         List<String> argsList = Stream.of(args).collect(Collectors.toList());

@@ -35,6 +35,12 @@ dependencies {
     compileOnly "net.sf.jopt-simple:jopt-simple:5.0.4"
 
     multirelase project(":jigsaw")
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+}
+
+test {
+    useJUnitPlatform()
 }
 
 java {

@@ -1,10 +1,62 @@
 # ForgeWrapper
 
-Allow [MultiMC](https://github.com/MultiMC/MultiMC5) to launch Minecraft 1.13+ with Forge.
+Allow a launcher to run any Forge version from a plain Mojang `version.json`.
 
-**ForgeWrapper has been adopted by MultiMC, you do not need to perform the following steps manually. (2020-03-29)**
+A fork of [PrismLauncher/ForgeWrapper](https://github.com/PrismLauncher/ForgeWrapper),
+which covers Minecraft 1.13+ by running Forge's installer in-process at launch.
+This fork adds the era below it: 1.5.2 and older, where installing Forge meant
+rewriting the client jar rather than running processors. Both eras end up as the
+same thing from a launcher's point of view — a `version.json` whose `mainClass`
+is this wrapper — so nothing outside has to know which era a build belongs to.
 
-## For other launchers
+Nothing here reaches the network. Every input is a file the launcher has already
+downloaded, named by a system property.
+
+## Pre-1.13 (Minecraft 1.5.2 and older)
+
+Two shapes, one operation:
+
+- **1.5.2** ships an installer whose profile sets `stripMeta`. Forge's own classes
+  are a normal library on the classpath; the client jar only needs its signature
+  removed.
+- **1.5.1 and older** ship a "universal" zip of loose class files meant to be
+  copied into `minecraft.jar`, overwriting what was there — the original jar mod.
+
+Both are the same job: overlay entries win, client entries fill in the rest,
+`META-INF` is dropped. Dropping it is not tidiness — the vanilla client jar is
+signed (1.5.2 carries `MOJANG_C.SF`/`.DSA`, 1.2.5 carries `CODESIGN.SF`/`.RSA`),
+and a signed jar whose contents no longer match its signature fails to load with
+a `SecurityException`. Hence the era's install instructions have always been
+"delete the META-INF folder".
+
+The patched jar is built once, on first launch, and rebuilt only when an input
+is newer than it.
+
+### Properties
+
+| Property | |
+|---|---|
+| `forgewrapper.mainClass` | the class to hand off to. **Its presence selects this mode.** |
+| `forgewrapper.minecraft` | the vanilla client jar to patch |
+| `forgewrapper.patched` | where the patched jar goes |
+| `forgewrapper.jarmod` | `File.pathSeparator`-separated archives to overlay, in order. Absent or empty means strip only (1.5.2). |
+
+Arguments reach the real main class untouched — the wrapper is a shim, not a
+launcher.
+
+### One requirement on the launcher
+
+**The vanilla client jar must not be on `-cp`.** The patched jar is appended to
+the classpath at runtime, and appending cannot shadow: if the vanilla jar is
+already there, its unpatched — and, for the overlay case, unmodded — classes win
+every lookup and the game starts looking like it worked. The wrapper checks for
+this and refuses rather than let it happen.
+
+## 1.13+
+
+Unchanged from upstream: the wrapper runs Forge's own `PostProcessors` in-process,
+then delegates to the real main class.
+
 1. ForgeWrapper provides some java properties since 1.4.2:
    - `forgewrapper.librariesDir` : a path to libraries folder (e.g. -Dforgewrapper.librariesDir=/home/xxx/.minecraft/libraries)
    - `forgewrapper.installer` : a path to forge installer (e.g. -Dforgewrapper.installer=/home/xxx/forge-1.14.4-28.2.0-installer.jar)
