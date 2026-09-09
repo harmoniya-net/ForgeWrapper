@@ -88,7 +88,9 @@ public class Installer {
      * a second launch does no work beyond hashing what is there.
      */
     private static void fetchProcessorLibraries(InstallV1 profile, File libraryDir, ProgressCallback monitor) {
-        File root = libraryDir.getParentFile();
+        // `root` here is the library directory itself — `downloadLibrary` resolves
+        // `<root>/<maven path>`, unlike `PostProcessors.process`, whose third
+        // argument is the directory *above* it.
         List<Artifact> grabbed = new ArrayList<>();
         List<File> extraDirs = new ArrayList<>();
         for (Version.Library library : profile.getLibraries()) {
@@ -97,7 +99,7 @@ public class Installer {
             if (artifact == null || artifact.getUrl() == null || artifact.getUrl().isEmpty()) {
                 continue;
             }
-            if (!DownloadUtils.downloadLibrary(monitor, null, library, root, grabbed, extraDirs)) {
+            if (!DownloadUtils.downloadLibrary(monitor, null, library, libraryDir, grabbed, extraDirs)) {
                 throw new IllegalStateException("Could not obtain " + library.getName() + ", which the Forge processors need");
             }
         }
