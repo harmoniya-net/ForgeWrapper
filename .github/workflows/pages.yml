@@ -1,0 +1,59 @@
+name: Version documents
+
+on:
+  release:
+    types: [published]
+  schedule:
+    # Forge publishes a handful of builds a day; a cold cache is the expensive
+    # run, every one after it is a few hundred requests.
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Restore the document cache
+        uses: actions/cache@v4
+        with:
+          path: generator/.cache
+          key: forge-documents-${{ github.run_id }}
+          restore-keys: forge-documents-
+      - name: Resolve the wrapper release
+        id: wrapper
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "tag=$(gh release view --json tagName -q .tagName)" >> "$GITHUB_OUTPUT"
+      - name: Generate
+        working-directory: generator
+        env:
+          FORGEWRAPPER_TAG: ${{ steps.wrapper.outputs.tag }}
+        run: |
+          npm test
+          node src/index.mjs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: generator/public
+
+  deploy:
+    needs: generate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

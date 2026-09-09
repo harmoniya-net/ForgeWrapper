@@ -13,3 +13,8 @@ bin
 *.ipr
 *.iws
 out
+
+# generator
+generator/.cache
+generator/public
+node_modules
